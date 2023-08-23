@@ -164,7 +164,7 @@ pub fn make_qlog_writer(
     }
 }
 
-fn dump_json(reqs: &[Http3Request], output_sink: &mut dyn FnMut(String)) {
+fn dump_json(reqs: &[Http3Request], _output_sink: &mut dyn FnMut(String)) {
     let mut out = String::new();
 
     writeln!(out, "{{").unwrap();
@@ -238,7 +238,7 @@ fn dump_json(reqs: &[Http3Request], output_sink: &mut dyn FnMut(String)) {
     writeln!(out, "]").unwrap();
     writeln!(out, "}}").unwrap();
 
-    output_sink(out);
+    _output_sink(out);
 }
 
 pub fn hdrs_to_strings(hdrs: &[quiche::h3::Header]) -> Vec<(String, String)> {
@@ -390,7 +390,7 @@ pub struct Http09Conn {
     reqs_sent: usize,
     reqs_complete: usize,
     reqs: Vec<Http09Request>,
-    output_sink: Rc<RefCell<dyn FnMut(String)>>,
+    _output_sink: Rc<RefCell<dyn FnMut(String)>>,
 }
 
 impl Default for Http09Conn {
@@ -400,7 +400,7 @@ impl Default for Http09Conn {
             reqs_sent: Default::default(),
             reqs_complete: Default::default(),
             reqs: Default::default(),
-            output_sink: Rc::new(RefCell::new(stdout_sink)),
+            _output_sink: Rc::new(RefCell::new(stdout_sink)),
         }
     }
 }
@@ -408,7 +408,7 @@ impl Default for Http09Conn {
 impl Http09Conn {
     pub fn with_urls(
         urls: &[url::Url], reqs_cardinal: u64,
-        output_sink: Rc<RefCell<dyn FnMut(String)>>,
+        _output_sink: Rc<RefCell<dyn FnMut(String)>>,
     ) -> Box<dyn HttpConn> {
         let mut reqs = Vec::new();
         for url in urls {
@@ -429,7 +429,7 @@ impl Http09Conn {
             reqs_sent: 0,
             reqs_complete: 0,
             reqs,
-            output_sink,
+            _output_sink,
         };
 
         Box::new(h_conn)
@@ -505,7 +505,7 @@ impl HttpConn for Http09Conn {
                     },
 
                     None => {
-                        self.output_sink.borrow_mut()(unsafe {
+                        self._output_sink.borrow_mut()(unsafe {
                             String::from_utf8_unchecked(stream_buf.to_vec())
                         });
                     },
@@ -756,7 +756,7 @@ pub struct Http3Conn {
     sent_body_bytes: HashMap<u64, usize>,
     dump_json: bool,
     dgram_sender: Option<Http3DgramSender>,
-    output_sink: Rc<RefCell<dyn FnMut(String)>>,
+    _output_sink: Rc<RefCell<dyn FnMut(String)>>,
 }
 
 impl Http3Conn {
@@ -768,7 +768,7 @@ impl Http3Conn {
         qpack_max_table_capacity: Option<u64>,
         qpack_blocked_streams: Option<u64>, dump_json: Option<usize>,
         dgram_sender: Option<Http3DgramSender>,
-        output_sink: Rc<RefCell<dyn FnMut(String)>>,
+        _output_sink: Rc<RefCell<dyn FnMut(String)>>,
     ) -> Box<dyn HttpConn> {
         let mut reqs = Vec::new();
         for url in urls {
@@ -849,7 +849,7 @@ impl Http3Conn {
             sent_body_bytes: HashMap::new(),
             dump_json: dump_json.is_some(),
             dgram_sender,
-            output_sink,
+            _output_sink,
         };
 
         Box::new(h_conn)
@@ -860,7 +860,7 @@ impl Http3Conn {
         qpack_max_table_capacity: Option<u64>,
         qpack_blocked_streams: Option<u64>,
         dgram_sender: Option<Http3DgramSender>,
-        output_sink: Rc<RefCell<dyn FnMut(String)>>,
+        _output_sink: Rc<RefCell<dyn FnMut(String)>>,
     ) -> std::result::Result<Box<dyn HttpConn>, String> {
         let h3_conn = quiche::h3::Connection::with_transport(
             conn,
@@ -881,7 +881,7 @@ impl Http3Conn {
             sent_body_bytes: HashMap::new(),
             dump_json: false,
             dgram_sender,
-            output_sink,
+            _output_sink,
         };
 
         Ok(Box::new(h_conn))
@@ -1262,14 +1262,14 @@ impl HttpConn for Http3Conn {
                                 rw.write_all(&buf[..read]).ok();
                             },
 
-                            None =>
-                                if !self.dump_json {
-                                    self.output_sink.borrow_mut()(unsafe {
-                                        String::from_utf8_unchecked(
-                                            buf[..read].to_vec(),
-                                        )
-                                    });
-                                },
+                            None =>{},
+                                // if !self.dump_json {
+                                //     self._output_sink.borrow_mut()(unsafe {
+                                //         String::from_utf8_unchecked(
+                                //             buf[..read].to_vec(),
+                                //         )
+                                //     });
+                                // },
                         }
                     }
                 },
@@ -1294,7 +1294,7 @@ impl HttpConn for Http3Conn {
                         if self.dump_json {
                             dump_json(
                                 &self.reqs,
-                                &mut *self.output_sink.borrow_mut(),
+                                &mut *self._output_sink.borrow_mut(),
                             );
                         }
 
@@ -1377,7 +1377,7 @@ impl HttpConn for Http3Conn {
             );
 
             if self.dump_json {
-                dump_json(&self.reqs, &mut *self.output_sink.borrow_mut());
+                dump_json(&self.reqs, &mut *self._output_sink.borrow_mut());
             }
 
             return true;

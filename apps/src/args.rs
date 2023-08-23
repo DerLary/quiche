@@ -478,6 +478,7 @@ pub struct ServerArgs {
     pub key: String,
     pub disable_gso: bool,
     pub disable_pacing: bool,
+    pub num_conn: u64,
 }
 
 impl Args for ServerArgs {

@@ -366,7 +366,7 @@ impl<'a> Header<'a> {
                 token: None,
                 versions: None,
                 key_phase: false,
-                spinbit: true,
+                spinbit: first & SPIN_BIT != 0,
             });
         }
 
@@ -430,7 +430,7 @@ impl<'a> Header<'a> {
 
             _ => (),
         };
-
+        // long header
         Ok(Header {
             ty,
             version,
@@ -441,6 +441,7 @@ impl<'a> Header<'a> {
             token,
             versions,
             key_phase: false,
+            spinbit: true,
         })
     }
 
@@ -769,7 +770,7 @@ pub fn retry(
     if !crate::version_is_supported(version) {
         return Err(Error::UnknownVersion);
     }
-
+    // long header
     let hdr = Header {
         ty: Type::Retry,
         version,
@@ -783,7 +784,7 @@ pub fn retry(
         spinbit:false,
     };
 
-    hdr.to_bytes(&mut b)?;
+    hdr.to_bytes(&mut b, false)?;
 
     let tag = compute_retry_integrity_tag(&b, dcid, version)?;
 
@@ -1176,6 +1177,7 @@ mod tests {
             token: None,
             versions: None,
             key_phase: false,
+            spinbit:false,
         };
 
         let mut d = [0; 50];

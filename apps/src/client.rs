@@ -48,13 +48,13 @@ pub enum ClientError {
 
 pub fn connect(
     args: ClientArgs, conn_args: CommonArgs,
-    output_sink: impl FnMut(String) + 'static,
+    _output_sink: impl FnMut(String) + 'static,
 ) -> Result<(), ClientError> {
     let mut buf = [0; 65535];
     let mut out = [0; MAX_DATAGRAM_SIZE];
 
-    let output_sink =
-        Rc::new(RefCell::new(output_sink)) as Rc<RefCell<dyn FnMut(_)>>;
+    let _output_sink =
+        Rc::new(RefCell::new(_output_sink)) as Rc<RefCell<dyn FnMut(_)>>;
 
     // Setup the event loop.
     let mut poll = mio::Poll::new().unwrap();
@@ -377,7 +377,7 @@ pub fn connect(
                 http_conn = Some(Http09Conn::with_urls(
                     &args.urls,
                     args.reqs_cardinal,
-                    Rc::clone(&output_sink),
+                    Rc::clone(&_output_sink),
                 ));
 
                 app_proto_selected = true;
@@ -405,7 +405,7 @@ pub fn connect(
                     conn_args.qpack_blocked_streams,
                     args.dump_json,
                     dgram_sender,
-                    Rc::clone(&output_sink),
+                    Rc::clone(&_output_sink),
                 ));
 
                 app_proto_selected = true;
