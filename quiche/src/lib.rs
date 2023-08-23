@@ -1418,6 +1418,10 @@ pub struct Connection {
 
     /// A resusable buffer used by Recovery
     newly_acked: Vec<recovery::Acked>,
+
+    /// FOR SPIN BIT
+    path_spin_bit: bool,
+    max_rec_packet_number: u64,
 }
 
 /// Creates a new server-side connection.
@@ -1851,6 +1855,8 @@ impl Connection {
             disable_dcid_reuse: config.disable_dcid_reuse,
 
             newly_acked: Vec::new(),
+            max_rec_packet_number: 0,
+            path_spin_bit: false,
         };
 
         if let Some(odcid) = odcid {
@@ -2218,6 +2224,15 @@ impl Connection {
     ) -> Result<usize> {
         let now = time::Instant::now();
 
+        qlog_with_type!(QLOG_PARAMS_SET, self.qlog, q, {    
+            let ev_data_server =
+                EventData::ReceivedOnPort(qlog::events::connectivity::ReceivedOnPort{
+                    src: info.from,
+                });
+            q.add_event_data_with_instant(ev_data_server, now).ok();
+        });
+
+
         if buf.is_empty() {
             return Err(Error::Done);
         }
@@ -2517,6 +2532,43 @@ impl Connection {
         );
 
         let pn_len = hdr.pkt_num_len;
+
+        if pn >= self.max_rec_packet_number{
+            self.max_rec_packet_number = pn;
+        }
+        if hdr.ty == packet::Type::Short && self.is_server && pn >= self.max_rec_packet_number{
+            if self.path_spin_bit != hdr.spinbit {
+                self.path_spin_bit = hdr.spinbit;
+                qlog_with_type!(QLOG_PARAMS_SET, self.qlog, q, {    
+                    let ev_data_server =
+                        EventData::SpinBitUpdated(qlog::events::connectivity::SpinBitUpdated{
+                            state: true,
+                        });
+                    q.add_event_data_with_instant(ev_data_server, now).ok();
+                });
+            }
+        }
+        if hdr.ty == packet::Type::Short && !self.is_server{
+            //println!("Packet-Number-Compare: pn:{}, stored_num: {}, res:{}", pn, self.max_rec_packet_number,pn >= self.max_rec_packet_number);
+            if pn >= self.max_rec_packet_number{
+                //println!("Path Spin Bit:{}",self.path_spin_bit);
+                //println!("Client Received Spin Bit:{}",hdr.spinbit);
+                // println!("Result::{}",self.path_spin_bit ^ hdr.spinbit == false);
+                if self.path_spin_bit ^ hdr.spinbit == false {
+                    self.path_spin_bit = !self.path_spin_bit;
+                    qlog_with_type!(QLOG_PACKET_RX, self.qlog, q, {
+                        let ev_data_server =
+                            EventData::SpinBitUpdated(qlog::events::connectivity::SpinBitUpdated{
+                                state: true,
+                            });
+            
+                        q.add_event_data_with_instant(ev_data_server, now).ok();
+                    });
+                    //println!("Changed Spin Bit to:{}, Bytes during last Spin: {}",self.path_spin_bit, self.recv_count);
+                    //println!("Total received data: {}, Total rec_bytes: {}, Recv packets: {}",self.rx_data, self.recv_bytes, self.recv_count);
+                }       
+            }
+        }
 
         trace!(
             "{} rx pkt {:?} len={} pn={} {}",
@@ -3395,6 +3447,14 @@ impl Connection {
 
             version: self.version,
 
+            // Spin Bit
+            spinbit: if pkt_type == packet::Type::Short {
+                self.path_spin_bit
+            } else {
+                false
+            },
+
+
             dcid,
             scid,
 
@@ -3414,7 +3474,7 @@ impl Connection {
             key_phase: self.key_phase,
         };
 
-        hdr.to_bytes(&mut b)?;
+        hdr.to_bytes(&mut b, self.path_spin_bit)?;
 
         let hdr_trace = if log::max_level() == log::LevelFilter::Trace {
             Some(format!("{hdr:?}"))
@@ -8417,9 +8477,14 @@ pub mod testing {
             token: conn.token.clone(),
             versions: None,
             key_phase: conn.key_phase,
+            spinbit: if pkt_type == packet::Type::Short {
+                conn.path_spin_bit
+            } else {
+                false
+            },
         };
 
-        hdr.to_bytes(&mut b)?;
+        hdr.to_bytes(&mut b, conn.path_spin_bit)?;
 
         let payload_len = frames.iter().fold(0, |acc, x| acc + x.wire_len());
 

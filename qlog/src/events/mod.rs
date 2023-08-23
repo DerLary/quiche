@@ -161,6 +161,9 @@ impl From<EventType> for EventImportance {
                 ConnectivityEventType::ConnectionStarted,
             ) => EventImportance::Base,
             EventType::ConnectivityEventType(
+                ConnectivityEventType::ReceivedOnPort,
+            ) => EventImportance::Base,
+            EventType::ConnectivityEventType(
                 ConnectivityEventType::ConnectionIdUpdated,
             ) => EventImportance::Base,
             EventType::ConnectivityEventType(
@@ -313,6 +316,10 @@ impl From<&EventData> for EventType {
                 EventType::ConnectivityEventType(
                     ConnectivityEventType::ConnectionStarted,
                 ),
+            EventData::ReceivedOnPort { .. } =>
+                EventType::ConnectivityEventType(
+                    ConnectivityEventType::ReceivedOnPort,
+                ),
             EventData::ConnectionClosed { .. } =>
                 EventType::ConnectivityEventType(
                     ConnectivityEventType::ConnectionClosed,
@@ -463,6 +470,9 @@ pub enum EventData {
 
     #[serde(rename = "connectivity:connection_started")]
     ConnectionStarted(connectivity::ConnectionStarted),
+
+    #[serde(rename = "connectivity:source_port_in")]
+    ReceivedOnPort(connectivity::ReceivedOnPort),
 
     #[serde(rename = "connectivity:connection_closed")]
     ConnectionClosed(connectivity::ConnectionClosed),

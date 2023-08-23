@@ -109,31 +109,31 @@ pub type ClientMap = HashMap<ClientId, Client>;
 /// Multiple requests for the same URL are indicated by the value of `cardinal`,
 /// any value "N" greater than 1, will cause ".N" to be appended to the
 /// filename.
-fn make_resource_writer(
-    url: &url::Url, target_path: &Option<String>, cardinal: u64,
-) -> Option<std::io::BufWriter<std::fs::File>> {
-    if let Some(tp) = target_path {
-        let resource =
-            url.path_segments().map(|c| c.collect::<Vec<_>>()).unwrap();
+// fn make_resource_writer(
+//     url: &url::Url, target_path: &Option<String>, cardinal: u64,
+// ) -> Option<std::io::BufWriter<std::fs::File>> {
+//     if let Some(tp) = target_path {
+//         let resource =
+//             url.path_segments().map(|c| c.collect::<Vec<_>>()).unwrap();
 
-        let mut path = format!("{}/{}", tp, resource.iter().last().unwrap());
+//         let mut path = format!("{}/{}", tp, resource.iter().last().unwrap());
 
-        if cardinal > 1 {
-            path = format!("{path}.{cardinal}");
-        }
+//         if cardinal > 1 {
+//             path = format!("{path}.{cardinal}");
+//         }
 
-        match std::fs::File::create(&path) {
-            Ok(f) => return Some(std::io::BufWriter::new(f)),
+//         match std::fs::File::create(&path) {
+//             Ok(f) => return Some(std::io::BufWriter::new(f)),
 
-            Err(e) => panic!(
-                "Error creating file for {}, attempted path was {}: {}",
-                url, path, e
-            ),
-        }
-    }
+//             Err(e) => panic!(
+//                 "Error creating file for {}, attempted path was {}: {}",
+//                 url, path, e
+//             ),
+//         }
+//     }
 
-    None
-}
+//     None
+// }
 
 fn autoindex(path: path::PathBuf, index: &str) -> path::PathBuf {
     if let Some(path_str) = path.to_str() {
@@ -151,7 +151,7 @@ pub fn make_qlog_writer(
     dir: &std::ffi::OsStr, role: &str, id: &str,
 ) -> std::io::BufWriter<std::fs::File> {
     let mut path = std::path::PathBuf::from(dir);
-    let filename = format!("{role}-{id}.sqlog");
+    let filename = format!("{id}.{role}.sqlog");
     path.push(filename);
 
     match std::fs::File::create(&path) {
@@ -464,8 +464,8 @@ impl HttpConn for Http09Conn {
             debug!("sending HTTP request {:?}", req.request_line);
 
             req.stream_id = Some(self.stream_id);
-            req.response_writer =
-                make_resource_writer(&req.url, target_path, req.cardinal);
+            req.response_writer = None;
+                // make_resource_writer(&req.url, target_path, req.cardinal);
 
             self.stream_id += 4;
 
@@ -1155,8 +1155,8 @@ impl HttpConn for Http3Conn {
             }
 
             req.stream_id = Some(s);
-            req.response_writer =
-                make_resource_writer(&req.url, target_path, req.cardinal);
+            req.response_writer = None;
+                // make_resource_writer(&req.url, target_path, req.cardinal);
             self.sent_body_bytes.insert(s, 0);
 
             reqs_done += 1;

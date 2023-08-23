@@ -193,6 +193,7 @@ pub fn connect(
             conn.set_keylog(Box::new(keylog));
         }
     }
+    println!("Initial connection ID: {:?}\n", scid);
 
     // Only bother with qlog if the user specified it.
     #[cfg(feature = "qlog")]

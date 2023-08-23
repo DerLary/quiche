@@ -464,6 +464,7 @@ Options:
   --disable-gso               Disable GSO (linux only).
   --disable-pacing            Disable pacing (linux only).
   --initial-cwnd-packets PACKETS      The initial congestion window size in terms of packet count [default: 10].
+  --num_conn COUNT            Number of connections after which the server exits.
   -h --help                   Show this screen.
 ";
 
@@ -491,6 +492,9 @@ impl Args for ServerArgs {
         let key = args.get_str("--key").to_string();
         let disable_gso = args.get_bool("--disable-gso");
         let disable_pacing = args.get_bool("--disable-pacing");
+        let num_conn = args.get_str("--num_conn").to_string();
+        let num_conn = num_conn.parse::<u64>().unwrap();
+
 
         ServerArgs {
             listen,
@@ -501,6 +505,7 @@ impl Args for ServerArgs {
             key,
             disable_gso,
             disable_pacing,
+            num_conn,
         }
     }
 }

@@ -57,6 +57,7 @@ pub enum ConnectionState {
 pub enum ConnectivityEventType {
     ServerListening,
     ConnectionStarted,
+    ReceivedOnPort,
     ConnectionClosed,
     ConnectionIdUpdated,
     SpinBitUpdated,
@@ -99,6 +100,12 @@ pub struct ConnectionStarted {
 
     pub src_cid: Option<Bytes>,
     pub dst_cid: Option<Bytes>,
+}
+
+#[serde_with::skip_serializing_none]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+pub struct ReceivedOnPort {
+    pub src: std::net::SocketAddr,
 }
 
 #[serde_with::skip_serializing_none]

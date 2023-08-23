@@ -43,6 +43,7 @@ use crate::stream;
 const FORM_BIT: u8 = 0x80;
 const FIXED_BIT: u8 = 0x40;
 const KEY_PHASE_BIT: u8 = 0x04;
+const SPIN_BIT: u8 = 0x20;
 
 const TYPE_MASK: u8 = 0x30;
 const PKT_NUM_MASK: u8 = 0x03;
@@ -315,6 +316,9 @@ pub struct Header<'a> {
     /// The key phase bit of the packet. It's only meaningful after the header
     /// protection is removed.
     pub(crate) key_phase: bool,
+
+    /// SpinBit
+    pub spinbit: bool,
 }
 
 impl<'a> Header<'a> {
@@ -362,6 +366,7 @@ impl<'a> Header<'a> {
                 token: None,
                 versions: None,
                 key_phase: false,
+                spinbit: true,
             });
         }
 
@@ -439,7 +444,7 @@ impl<'a> Header<'a> {
         })
     }
 
-    pub(crate) fn to_bytes(&self, out: &mut octets::OctetsMut) -> Result<()> {
+    pub(crate) fn to_bytes(&self, out: &mut octets::OctetsMut, path_spin_bit: bool) -> Result<()> {
         let mut first = 0;
 
         // Encode pkt num length.
@@ -459,6 +464,11 @@ impl<'a> Header<'a> {
             } else {
                 first &= !KEY_PHASE_BIT;
             }
+            // Spin Bit
+            if path_spin_bit {
+                first |= SPIN_BIT;
+            }
+
 
             out.put_u8(first)?;
             out.put_bytes(&self.dcid)?;
@@ -770,6 +780,7 @@ pub fn retry(
         token: Some(token.to_vec()),
         versions: None,
         key_phase: false,
+        spinbit:false,
     };
 
     hdr.to_bytes(&mut b)?;
@@ -1170,7 +1181,7 @@ mod tests {
         let mut d = [0; 50];
 
         let mut b = octets::OctetsMut::with_slice(&mut d);
-        assert!(hdr.to_bytes(&mut b).is_ok());
+        assert!(hdr.to_bytes(&mut b, false).is_ok());
 
         let mut b = octets::OctetsMut::with_slice(&mut d);
         assert_eq!(Header::from_bytes(&mut b, 9).unwrap(), hdr);

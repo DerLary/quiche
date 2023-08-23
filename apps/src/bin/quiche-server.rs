@@ -77,6 +77,11 @@ fn main() {
 
     // Set SO_TXTIME socket option on the listening UDP socket for pacing
     // outgoing packets.
+    let mut num_conn = 0;
+
+    if args.num_conn > 0 {
+        num_conn = args.num_conn;
+    }
     if !args.disable_pacing {
         match set_txtime_sockopt(&socket) {
             Ok(_) => {
@@ -177,6 +182,7 @@ fn main() {
     let mut continue_write = false;
 
     let local_addr = socket.local_addr().unwrap();
+    let mut hash_map:HashMap<String, String> = HashMap::new();
 
     loop {
         // Find the shorter timeout from all the active connections.
@@ -258,6 +264,13 @@ fn main() {
             let client = if !clients_ids.contains_key(&hdr.dcid) &&
                 !clients_ids.contains_key(&conn_id)
             {
+                let key = format!("{:?}", &hdr.scid);
+                if !hash_map.contains_key(&key) { // else it gets printed three times
+                    print!("New Connection - Initial cID: {:?}\n", hdr.scid);
+                    hash_map.insert(key, "val".to_string());
+                }
+                let qlog_id = &hdr.scid; // copy source id to name qlog after this
+
                 if hdr.ty != quiche::Type::Initial {
                     error!("Packet is not Initial");
                     continue 'read;
@@ -366,7 +379,8 @@ fn main() {
                 {
                     if let Some(dir) = std::env::var_os("QLOGDIR") {
                         let id = format!("{:?}", &scid);
-                        let writer = make_qlog_writer(&dir, "server", &id);
+                        let id2 = format!("{:?}", qlog_id);
+                        let writer = make_qlog_writer(&dir, "server", &id2);//&id); //Source from client as qlog name
 
                         conn.set_qlog(
                             std::boxed::Box::new(writer),
@@ -620,6 +634,7 @@ fn main() {
                     c.conn.stats(),
                     c.conn.path_stats().collect::<Vec<quiche::PathStats>>()
                 );
+                num_conn = num_conn - 1;
 
                 for id in c.conn.source_ids() {
                     let id_owned = id.clone().into_owned();
@@ -629,6 +644,10 @@ fn main() {
 
             !c.conn.is_closed()
         });
+        if num_conn == 0{
+            std::process::exit(0);
+            
+        }
     }
 }
 
